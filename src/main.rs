@@ -1,12 +1,19 @@
-#![allow(dead_code)]
-use automerge::{transaction::Transactable, ActorId, AutoCommit, ObjType, ReadDoc};
+#![allow(unused_imports, dead_code)]
+use automerge::{
+    patches::TextRepresentation,
+    sync::{Message, State as SyncState, SyncDoc},
+    transaction::Transactable,
+    ActorId, AutoCommit, Change, ObjType, Patch, PatchLog, ReadDoc, Value,
+};
 use autosurgeon::{hydrate, reconcile, Hydrate, Reconcile, Text};
 use std::borrow::Cow;
+use std::error::Error;
 
 fn main() {
     automerge_text();
     // automerge_example();
     // autosurgeon_example()
+    let _ = basic_patchlog_sync_example();
 }
 
 fn automerge_text() {
@@ -44,7 +51,8 @@ fn automerge_text() {
     // but splice_text rather works on the "two 'three character' elements",
     // at least in some terms:
     // This is consistent to me and works as expected:
-    doc.splice_text(&three_char_per_position, 3, 3, "xyz").unwrap();
+    doc.splice_text(&three_char_per_position, 3, 3, "xyz")
+        .unwrap();
     // but: you can't every only replace a part of "foo" or "bar".
     // in fact all these splice_text calls would produce a similar result:
     // doc.splice_text(&three_char_per_position, 3, 1, "xyz").unwrap();
@@ -61,9 +69,19 @@ fn automerge_text() {
     // Furthermore, splice_text seems to do some form of insert that "removes" my weird
     // three-char-groupings, because in a "second round" of splice_text it behaves differently
     // so the underlying representation has changed
-    doc.splice_text(&three_char_per_position, 3, 1, "abc").unwrap();
+    doc.splice_text(&three_char_per_position, 3, 1, "abc")
+        .unwrap();
     assert_eq!(doc.length(&three_char_per_position), 8);
     assert_eq!(doc.text(&three_char_per_position).unwrap(), "fooabcyz");
+
+    let s = "🥕字👩‍❤️‍💋‍👩";
+    doc.update_text(&one_char_per_position, s).unwrap();
+    // where's the 10th character coming from?? => Display Heart as Emojii (<fe0f>)
+    // for c in s.chars() {
+    //     println!("{:?}", c);
+    // }
+    // println!("{}", s.chars().count());
+    assert_eq!(doc.length(&one_char_per_position), 10);
 }
 
 fn automerge_example() {
@@ -192,4 +210,73 @@ fn autosurgeon_example() {
 
     let quote: Quote = hydrate(&doc).unwrap();
     assert_eq!(quote.text.as_str(), "All that glitters is not gold");
+}
+
+fn basic_patchlog_sync_example() -> Result<(), Box<dyn Error>> {
+    let mut peer1 = AutoCommit::new();
+    let the_text = peer1.put_object(automerge::ROOT, "text", ObjType::Text)?;
+    let _ = peer1.update_text(&the_text, "foobar");
+
+    // Create a state to track our sync with peer2
+    let mut peer1_state = SyncState::new();
+    // Generate the initial message to send to peer2, unwrap for brevity
+    let message1to2 = peer1
+        .sync()
+        .generate_sync_message(&mut peer1_state)
+        .unwrap();
+
+    // We receive the message on peer2. We don't have a document at all yet
+    // so we create one
+    let mut peer2 = automerge::AutoCommit::new();
+    // We don't have a state for peer1 (it's a new connection), so we create one
+    let mut peer2_state = SyncState::new();
+
+    let mut patch_log = PatchLog::active(TextRepresentation::String);
+    let _ = peer2.sync().receive_sync_message_log_patches(
+        &mut peer2_state,
+        message1to2.clone(),
+        &mut patch_log,
+    );
+    let patches = peer2.make_patches(&mut patch_log);
+    dbg!(patches);
+
+    // Now receive the message from peer 1
+    // peer2
+    //     .sync()
+    //     .receive_sync_message(&mut peer2_state, message1to2)?;
+
+    // Now we loop, sending messages from one to two and two to one until
+    // neither has anything new to send
+
+    loop {
+        let two_to_one = peer2.sync().generate_sync_message(&mut peer2_state);
+        if let Some(message) = two_to_one.as_ref() {
+            println!("two to one");
+            peer1
+                .sync()
+                .receive_sync_message(&mut peer1_state, message.clone())?;
+        }
+        let one_to_two = peer1.sync().generate_sync_message(&mut peer1_state);
+        if let Some(message) = one_to_two.as_ref() {
+            println!("one to two");
+            let _ = peer2.sync().receive_sync_message_log_patches(
+                &mut peer2_state,
+                message.clone(),
+                &mut patch_log,
+            );
+            let patches = peer2.make_patches(&mut patch_log);
+            dbg!(patches);
+            // peer2
+            //     .sync()
+            //     .receive_sync_message(&mut peer2_state, message.clone())?;
+        }
+        if two_to_one.is_none() && one_to_two.is_none() {
+            break;
+        }
+    }
+
+    let the_text_p2 = peer2.get(automerge::ROOT, "text")?.map(|(_, o)| o).unwrap();
+    assert_eq!(peer2.text(&the_text_p2)?, "foobar");
+
+    Ok(())
 }
