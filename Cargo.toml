@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 automerge = "0.5.7"
 autosurgeon = "0.8.3"
+yrs = "0.17.4"
