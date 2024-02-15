@@ -210,6 +210,7 @@ version = "0.1.0"
 dependencies = [
  "automerge",
  "autosurgeon",
+ "y-sync",
  "yrs",
 ]
 
@@ -662,6 +663,16 @@ name = "wasm-bindgen-shared"
 version = "0.2.91"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4f186bd2dcf04330886ce82d6f33dd75a7bfcf69ecf5763b89fcde53b6ac9838"
+
+[[package]]
+name = "y-sync"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52e3675a497cde881a71e7e5c2ae1d087dfc7733ddece9b24a9a61408e969d3b"
+dependencies = [
+ "thiserror",
+ "yrs",
+]
 
 [[package]]
 name = "yrs"

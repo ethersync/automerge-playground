@@ -1,7 +1,12 @@
+use y_sync::{
+    awareness::Awareness,
+    sync::{DefaultProtocol, Protocol},
+};
 use yrs::types::text::TextEvent;
 use yrs::types::Delta;
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
+use yrs::updates::encoder::EncoderV1;
 use yrs::{
     Doc, GetString, Observable, ReadTxn, StateVector, Text, Transact, TransactionMut, Update,
 };
@@ -22,7 +27,35 @@ fn observe_text_callback(txn: &TransactionMut, event: &TextEvent) {
         }
     }
 }
+
 fn main() {
+    manual_sync_example();
+}
+
+fn y_sync_example() {
+    let doc = Doc::new();
+    let text = doc.get_or_insert_text("article");
+    {
+        let mut txn = doc.transact_mut();
+        text.insert(&mut txn, 0, "hello");
+    }
+
+    let doc2 = Doc::new();
+    let text2 = doc2.get_or_insert_text("article");
+    {
+        let mut txn = doc2.transact_mut();
+        text2.insert(&mut txn, 0, " world");
+    }
+
+    let protocol = DefaultProtocol;
+    let awareness = Awareness::new(doc);
+    let mut encoder = EncoderV1::new();
+    protocol.start(&awareness, &mut encoder).unwrap();
+
+    todo!();
+}
+
+fn manual_sync_example() {
     let doc = Doc::new();
     let text = doc.get_or_insert_text("article");
 
