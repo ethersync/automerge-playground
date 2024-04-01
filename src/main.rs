@@ -14,7 +14,8 @@ fn main() {
     // automerge_example();
     // autosurgeon_example()
     // let _ = basic_patchlog_sync_example();
-    basic_conflict_demo();
+    // basic_conflict_demo();
+    merge_independent_heads();
 }
 
 fn automerge_text() {
@@ -102,6 +103,27 @@ fn basic_conflict_demo() {
     doc.merge(&mut doc2).unwrap();
     dbg!(doc.get(&contact, "name").unwrap()); // winning value picked "random, but deterministically"
     dbg!(doc.get_all(&contact, "name").unwrap()); // here, we have two elements
+}
+
+fn merge_independent_heads() {
+    // AutoCommit implements the ReadDoc trait
+    let mut doc = AutoCommit::new();
+    let contact = doc
+        .put_object(automerge::ROOT, "contact", ObjType::Map)
+        .unwrap();
+
+    let mut doc2 = AutoCommit::new();
+    let contact2 = doc2
+        .put_object(automerge::ROOT, "contact", ObjType::Map)
+        .unwrap();
+
+    doc2.put(&contact2, "name", "Bob").unwrap();
+    doc.put(&contact, "name", "Alice").unwrap();
+
+    doc.merge(&mut doc2).unwrap();
+    dbg!(doc.get_all(&contact, "name").unwrap()); // here, we have only a single element
+    dbg!(doc.get_all(automerge::ROOT, "contact").unwrap()); // here, we have two elements
+                                                            // => this merge happens on the level of the map!! :-o
 }
 
 fn automerge_example() {
