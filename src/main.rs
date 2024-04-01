@@ -10,10 +10,11 @@ use std::borrow::Cow;
 use std::error::Error;
 
 fn main() {
-    automerge_text();
+    // automerge_text();
     // automerge_example();
     // autosurgeon_example()
-    let _ = basic_patchlog_sync_example();
+    // let _ = basic_patchlog_sync_example();
+    basic_conflict_demo();
 }
 
 fn automerge_text() {
@@ -82,6 +83,25 @@ fn automerge_text() {
     // }
     // println!("{}", s.chars().count());
     assert_eq!(doc.length(&one_char_per_position), 10);
+}
+
+/// Reproducing what is mentioned in https://docs.rs/automerge/latest/automerge/#conflicts
+fn basic_conflict_demo() {
+    // AutoCommit implements the ReadDoc trait
+    let mut doc = AutoCommit::new();
+    let contact = doc
+        .put_object(automerge::ROOT, "contact", ObjType::Map)
+        .unwrap();
+
+    let mut doc2 = doc.fork().with_actor(ActorId::random());
+    let contact2 = doc2.get(automerge::ROOT, "contact").unwrap().unwrap().1;
+
+    doc2.put(&contact2, "name", "Bob").unwrap();
+    doc.put(&contact, "name", "Alice").unwrap();
+
+    doc.merge(&mut doc2).unwrap();
+    dbg!(doc.get(&contact, "name").unwrap()); // winning value picked "random, but deterministically"
+    dbg!(doc.get_all(&contact, "name").unwrap()); // here, we have two elements
 }
 
 fn automerge_example() {
