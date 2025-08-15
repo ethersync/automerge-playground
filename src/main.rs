@@ -120,10 +120,24 @@ fn merge_independent_heads() {
     doc2.put(&contact2, "name", "Bob").unwrap();
     doc.put(&contact, "name", "Alice").unwrap();
 
+    dbg!(doc.get_heads());
     doc.merge(&mut doc2).unwrap();
+    dbg!(doc.get_heads());
+
     dbg!(doc.get_all(&contact, "name").unwrap()); // here, we have only a single element
     dbg!(doc.get_all(automerge::ROOT, "contact").unwrap()); // here, we have two elements
                                                             // => this merge happens on the level of the map!! :-o
+
+    doc.put(&contact, "name", "Eve").unwrap();
+
+    dbg!(doc.get_all(&contact, "name").unwrap());
+    dbg!(doc.get_all(automerge::ROOT, "contact").unwrap());
+
+    let contact3 = doc
+        .put_object(automerge::ROOT, "contact", ObjType::Map)
+        .unwrap();
+
+    dbg!(doc.get_all(automerge::ROOT, "contact").unwrap());
 }
 
 fn automerge_example() {
