@@ -1,3 +1,4 @@
+#![allow(unused)]
 use y_sync::{
     awareness::Awareness,
     sync::{DefaultProtocol, Protocol},

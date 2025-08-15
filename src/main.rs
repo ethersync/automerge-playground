@@ -1,4 +1,4 @@
-#![allow(unused_imports, dead_code)]
+#![allow(unused, dead_code)]
 use automerge::{
     patches::TextRepresentation,
     sync::{Message, State as SyncState, SyncDoc},

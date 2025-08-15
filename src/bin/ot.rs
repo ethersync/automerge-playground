@@ -1,3 +1,4 @@
+#![allow(unused)]
 use operational_transform::{
     OperationSeq,
     Operation::{*},
