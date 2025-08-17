@@ -4,10 +4,13 @@ use automerge::{
     sync::{Message, State as SyncState, SyncDoc},
     transaction::Transactable,
     ActorId, AutoCommit, Change, ObjType, Patch, PatchLog, ReadDoc, Value,
+    iter::Keys,
 };
 use autosurgeon::{hydrate, reconcile, Hydrate, Reconcile, Text};
+use std::collections::HashSet;
 use std::borrow::Cow;
 use std::error::Error;
+use std::fs;
 
 fn main() {
     // automerge_text();
@@ -15,7 +18,8 @@ fn main() {
     // autosurgeon_example()
     // let _ = basic_patchlog_sync_example();
     // basic_conflict_demo();
-    merge_independent_heads();
+    // merge_independent_heads();
+    ethersync_file_history();
 }
 
 fn automerge_text() {
@@ -335,4 +339,50 @@ fn basic_patchlog_sync_example() -> Result<(), Box<dyn Error>> {
     assert_eq!(peer2.text(&the_text_p2)?, "foobar");
 
     Ok(())
+}
+
+fn ethersync_file_history() {
+    let doc_path ="/Users/mn/projects/ethersync/automerge-playground/wikidoc";
+    let bytes = fs::read(doc_path).unwrap();
+    let mut doc = AutoCommit::load(&bytes).unwrap();
+
+
+    dbg!(&doc.keys(automerge::ROOT).collect::<Vec<_>>());
+
+    let file_map = doc.get(automerge::ROOT, "files").unwrap().unwrap().1;
+
+    dbg!(&doc.keys(&file_map).collect::<Vec<_>>());
+    let heads = doc.get_heads();
+    dbg!(&heads);
+    let changes = doc.get_changes(&[]);
+    dbg!(changes.len());
+    let mut hashes = vec![];
+    for change in &changes {
+        let h = change.hash();
+        // dbg!(&change.hash());
+        hashes.push(h);
+    }
+    let mut number_of_documents: usize = 0;
+    let mut prev_keys: HashSet<String> = HashSet::new();
+    for h in hashes {
+
+        let keys = doc.keys_at(&file_map, &[h]);
+        let c = keys.count();
+        if c != number_of_documents {
+            number_of_documents = c;
+            let keys_new = doc.keys_at(&file_map, &[h]).collect::<HashSet<_>>();
+            let added: Vec<_> = keys_new.difference(&prev_keys).collect();
+            if !added.is_empty() {
+                println!("Newly added documents in {h}:");
+                dbg!(added);
+            }
+            let removed: Vec<_> = prev_keys.difference(&keys_new).collect();
+            if !removed.is_empty() {
+                println!("Removed documents in {h}:");
+                dbg!(removed);
+            }
+            prev_keys = keys_new;
+        }
+    }
+
 }
