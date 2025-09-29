@@ -1,6 +1,6 @@
 #![allow(unused, dead_code)]
 use automerge::{
-    iter::Keys, patches::TextRepresentation, sync::{Message, State as SyncState, SyncDoc}, transaction::Transactable, ActorId, AutoCommit, Change, ChangeHash, ObjType, legacy::OpType, Patch, PatchLog, ReadDoc, Value
+    iter::Keys, patches::TextRepresentation, sync::{Message, State as SyncState, SyncDoc}, transaction::Transactable, ActorId, AutoCommit, Change, ChangeHash, ObjType, Patch, PatchLog, ReadDoc, Value
 };
 use autosurgeon::{hydrate, reconcile, Hydrate, Reconcile, Text};
 use std::borrow::Cow;
@@ -351,9 +351,9 @@ fn ethersync_file_history(doc_path: &str) {
     let heads = doc.get_heads();
     let mut current_head = heads[0];
     for _ in 0..10 {
-        let change = doc.get_change_by_hash(&current_head).unwrap();
-        println!("* {}", summarize(change));
+        let change = doc.get_change_by_hash(&current_head).unwrap().clone();
         let parents = change.deps();
+        println!("* {}", summarize_diff(&mut doc, parents, &[current_head]));
         current_head = parents[0];
     }
 
@@ -404,7 +404,11 @@ fn ethersync_file_history(doc_path: &str) {
 /*
 - Anzahl der Ops pro Typ Op
 */
-fn summarize(change: &Change) -> String {
+fn summarize_diff(doc: &mut AutoCommit, before: &[ChangeHash], after: &[ChangeHash]) -> String {
+    let patches = doc.diff(before, after);
+    dbg!(&patches);
+    format!("{} patches", patches.len())
+    /*
     let expanded_change = change.decode();
     let ops = &expanded_change.operations;
     match ops.len() {
@@ -425,4 +429,5 @@ fn summarize(change: &Change) -> String {
             format!("{} ops", expanded_change.operations.len())
         }
     }
+    */
 }
