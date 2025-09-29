@@ -1,5 +1,5 @@
-use diamond_types::list::*;
 use diamond_types::list::encoding::*;
+use diamond_types::list::*;
 
 fn main() {
     let mut oplog = OpLog::new();

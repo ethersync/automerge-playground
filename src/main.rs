@@ -1,14 +1,14 @@
 #![allow(unused, dead_code)]
 use automerge::{
+    iter::Keys,
     patches::TextRepresentation,
     sync::{Message, State as SyncState, SyncDoc},
     transaction::Transactable,
     ActorId, AutoCommit, Change, ObjType, Patch, PatchLog, ReadDoc, Value,
-    iter::Keys,
 };
 use autosurgeon::{hydrate, reconcile, Hydrate, Reconcile, Text};
-use std::collections::HashSet;
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::error::Error;
 use std::fs;
 
@@ -342,10 +342,9 @@ fn basic_patchlog_sync_example() -> Result<(), Box<dyn Error>> {
 }
 
 fn ethersync_file_history() {
-    let doc_path ="/Users/mn/projects/ethersync/automerge-playground/wikidoc";
+    let doc_path = "/Users/mn/projects/ethersync/automerge-playground/wikidoc";
     let bytes = fs::read(doc_path).unwrap();
     let mut doc = AutoCommit::load(&bytes).unwrap();
-
 
     dbg!(&doc.keys(automerge::ROOT).collect::<Vec<_>>());
 
@@ -384,5 +383,4 @@ fn ethersync_file_history() {
             prev_keys = keys_new;
         }
     }
-
 }

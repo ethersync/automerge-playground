@@ -1,8 +1,5 @@
 #![allow(unused)]
-use operational_transform::{
-    OperationSeq,
-    Operation::{*},
-};
+use operational_transform::{Operation::*, OperationSeq};
 
 fn main() {
     let s = "";
@@ -24,5 +21,5 @@ fn main() {
     //let after_ba_prime = ba_prime.apply(s).unwrap();
 
     assert_eq!(ab_prime, ba_prime);
-    //assert_eq!(dbg!(after_ab_prime), after_ba_prime); 
+    //assert_eq!(dbg!(after_ab_prime), after_ba_prime);
 }
