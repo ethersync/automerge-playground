@@ -1,25 +1,23 @@
 #![allow(unused, dead_code)]
 use automerge::{
-    iter::Keys,
-    patches::TextRepresentation,
-    sync::{Message, State as SyncState, SyncDoc},
-    transaction::Transactable,
-    ActorId, AutoCommit, Change, ObjType, Patch, PatchLog, ReadDoc, Value,
+    iter::Keys, patches::TextRepresentation, sync::{Message, State as SyncState, SyncDoc}, transaction::Transactable, ActorId, AutoCommit, Change, ChangeHash, ObjType, legacy::OpType, Patch, PatchLog, ReadDoc, Value
 };
 use autosurgeon::{hydrate, reconcile, Hydrate, Reconcile, Text};
 use std::borrow::Cow;
 use std::collections::HashSet;
+use std::env;
 use std::error::Error;
 use std::fs;
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
     // automerge_text();
     // automerge_example();
     // autosurgeon_example()
     // let _ = basic_patchlog_sync_example();
     // basic_conflict_demo();
     // merge_independent_heads();
-    ethersync_file_history();
+    ethersync_file_history(&args[1]);
 }
 
 fn automerge_text() {
@@ -341,30 +339,47 @@ fn basic_patchlog_sync_example() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn ethersync_file_history() {
-    let doc_path = "/Users/mn/projects/ethersync/automerge-playground/wikidoc";
+fn ethersync_file_history(doc_path: &str) {
     let bytes = fs::read(doc_path).unwrap();
     let mut doc = AutoCommit::load(&bytes).unwrap();
 
-    dbg!(&doc.keys(automerge::ROOT).collect::<Vec<_>>());
+    //dbg!(&doc.keys(automerge::ROOT).collect::<Vec<_>>());
 
     let file_map = doc.get(automerge::ROOT, "files").unwrap().unwrap().1;
 
-    dbg!(&doc.keys(&file_map).collect::<Vec<_>>());
+    //dbg!(&doc.keys(&file_map).collect::<Vec<_>>());
     let heads = doc.get_heads();
+    let mut current_head = heads[0];
+    for _ in 0..10 {
+        let change = doc.get_change_by_hash(&current_head).unwrap();
+        println!("* {}", summarize(change));
+        let parents = change.deps();
+        current_head = parents[0];
+    }
+
+    /*
     dbg!(&heads);
     let changes = doc.get_changes(&[]);
     dbg!(changes.len());
     let mut hashes = vec![];
+    let mut i = 0;
     for change in &changes {
         let h = change.hash();
+        if i > 10 && i < 100 {
+            dbg!(&change.decode());
+        }
+        i += 1;
+
+        if i >= 100 {
+            return;
+        }
         // dbg!(&change.hash());
         hashes.push(h);
     }
     let mut number_of_documents: usize = 0;
     let mut prev_keys: HashSet<String> = HashSet::new();
-    for h in hashes {
 
+    for h in hashes {
         let keys = doc.keys_at(&file_map, &[h]);
         let c = keys.count();
         if c != number_of_documents {
@@ -381,6 +396,33 @@ fn ethersync_file_history() {
                 dbg!(removed);
             }
             prev_keys = keys_new;
+        }
+    }
+    */
+}
+
+/*
+- Anzahl der Ops pro Typ Op
+*/
+fn summarize(change: &Change) -> String {
+    let expanded_change = change.decode();
+    let ops = &expanded_change.operations;
+    match ops.len() {
+        0 => {"zero ops ???".into()},
+        1 => {
+            // diplay nicely
+            match ops[0].action {
+                OpType::Put(value) => format!("put {value}"),
+                OpType::Delete => "delete".into(),
+                _ => "some other op".into(),
+            }
+        }
+        _ => {
+            // count types
+            for ops in ops {
+                dbg!(&ops.action);
+            }
+            format!("{} ops", expanded_change.operations.len())
         }
     }
 }
